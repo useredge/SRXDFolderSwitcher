@@ -7,6 +7,7 @@
 
 ### Usage instructions
 Remember to follow the **JSON format** when adding custom paths, as well as properly **escaping the backslash characters** in the path strings.
+To cycle between folders, press F1 in the main menu.
 ```json
 [
   {
