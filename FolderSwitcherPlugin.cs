@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using SRXDFolderSwitcher.Classes;
+using XDMenuPlay;
 
 namespace SRXDFolderSwitcher
 {
@@ -38,6 +39,7 @@ namespace SRXDFolderSwitcher
 
             Logger = base.Logger;
             Harmony.CreateAndPatchAll(typeof(PathPatches));
+            Harmony.CreateAndPatchAll(typeof(SelectionPatches));
 
             if (File.Exists(configFilePath))
             {
@@ -123,6 +125,7 @@ namespace SRXDFolderSwitcher
                 }
 
             }
+
             [HarmonyPatch(typeof(XDMainMenu), nameof(XDMainMenu.OpenMenu)), HarmonyPostfix]
             private static void OpenMenu_Postfix()
             {
@@ -132,5 +135,92 @@ namespace SRXDFolderSwitcher
             }
 
         }
+
+        public class SelectionPatches
+        {
+
+            private const string deleteButtonPath = "GameScene/MenuScenes(Clone)/MainMenuWorldSpaceContainer/Canvas/XDSelectionMenu/Container/Content/TabPanelContainer/TabPanelColumn/TabsOffset/TabsContainer/TabPanelDisplayList/TabPanel_ManageCustoms(Clone)/Scroll List Tab Prefab/Scroll View/Viewport/Content/ManageTrackPopout/";
+
+            private static GameObject _clonedButton;
+
+            private static GameObject _folderSwitchChoice;
+
+            private static bool GameObjectExists(string gameObjPath)
+            {
+                return GameObject.Find(gameObjPath) == null ? false : true;
+            }
+
+            private static void OpenFolderChoiceDialog()
+            {
+                ModalMessageDialog.ModalMessage msg = new ModalMessageDialog.ModalMessage();
+                msg.message = "balls";
+                msg.cancelCallback += () =>
+                {
+                    NotificationSystemGUI.AddMessage("no balls :(");
+                    _folderSwitchChoice?.SetActive(false);
+                };
+                msg.cancelText = new TranslationReference("UI_No", false);
+                msg.affirmativeCallback += () =>
+                {
+                    NotificationSystemGUI.AddMessage("yo ballin :D");
+                    _folderSwitchChoice?.SetActive(false);
+                };
+                msg.affirmativeText = new TranslationReference("UI_Yes", false);
+                ModalMessageDialog.Instance.AddMessage(msg);
+                _folderSwitchChoice?.SetActive(true);
+                if (_folderSwitchChoice != null) return;
+                _folderSwitchChoice = Object.Instantiate(BuildSettingsAsset.Instance.multiChoiceOptionPrefab,
+                    ModalMessageDialog.Instance.transform.Find("Container/Body"));
+                _folderSwitchChoice.transform.SetSiblingIndex(4);
+                _folderSwitchChoice.name = "FolderSwitchOptions";
+                Object.Destroy(_folderSwitchChoice.GetComponent<XDNavigableOptionMultiChoice_IntValue>());
+                var multiChoice = _folderSwitchChoice.GetComponent<XDNavigableOptionMultiChoice>();
+                //multiChoice.state.callbacks = new XDNavigableOptionMultiChoice.Callbacks();
+                multiChoice.SetCallbacksAndValue(
+                    0,
+                    v => { NotificationSystemGUI.AddMessage("New value: " + v); },
+                    () => new IntRange(0, customPaths.Count),
+                    v => customPaths[v].Key
+                );
+                _folderSwitchChoice.transform.Find("OptionLabel").GetComponent<CustomTextMeshProUGUI>().text = "cursed";
+            }
+
+            [HarmonyPatch(typeof(XDSelectionListMenu), nameof(XDSelectionListMenu.UpdatePreviewHandle)), HarmonyPostfix]
+            private static void Update_Postfix()
+            {
+
+                if (XDSelectionListMenu.Instance == null) return;
+
+                if (Input.GetKeyDown(KeyCode.F2))
+                {
+                    NotificationSystemGUI.AddMessage($"Current track: {XDSelectionListMenu.Instance.CurrentPreviewTrack.Item1.TrackInfoRef.customFile.FilePath}");
+                }
+
+            }
+
+            [HarmonyPatch(typeof(XDSelectionListMenu), nameof(XDSelectionListMenu.OpenSidePanel)), HarmonyPostfix]
+            private static void CloneButton_Postfix()
+            {
+
+                if (!GameObjectExists(deleteButtonPath + "DeleteSelected")) return;
+
+                if (_clonedButton != null) return;
+
+                var deleteButton = GameObject.Find(deleteButtonPath + "DeleteSelected");
+                _clonedButton = GameObject.Instantiate(deleteButton, deleteButton.transform.parent);
+
+                _clonedButton.gameObject.name = "MoveToFolder";
+
+                GameObject.Destroy(_clonedButton.transform.Find("IconContainer/ButtonText").GetComponent<TranslatedTextMeshPro>());
+                _clonedButton.transform.Find("IconContainer/ButtonText").GetComponent<CustomTextMeshProUGUI>().text = "Move to folder";
+                _clonedButton.transform.SetSiblingIndex(1);
+
+                _clonedButton.GetComponent<XDNavigableButton>().onClick = new UnityEngine.UI.Button.ButtonClickedEvent();
+                _clonedButton.GetComponent<XDNavigableButton>().onClick.AddListener(OpenFolderChoiceDialog);
+
+            }
+
+        }
+
     }
 }
