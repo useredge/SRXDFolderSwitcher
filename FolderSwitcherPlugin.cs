@@ -8,6 +8,8 @@ using System.IO;
 using System.Linq;
 using SRXDFolderSwitcher.Classes;
 using XDMenuPlay;
+using ChartHelper.Parsing;
+using System;
 
 namespace SRXDFolderSwitcher
 {
@@ -92,7 +94,7 @@ namespace SRXDFolderSwitcher
 
                 if (customPaths[folderIndex].Value != "")
                 {
-                    __result = customPaths[folderIndex].Value + "\\AudioClips";
+                    __result = Path.Combine(customPaths[folderIndex].Value, "AudioClips");
                     return false;
                 }
 
@@ -105,7 +107,7 @@ namespace SRXDFolderSwitcher
             {
                 if (customPaths[folderIndex].Value != "")
                 {
-                    __result = customPaths[folderIndex].Value + "\\AlbumArt";
+                    __result = Path.Combine(customPaths[folderIndex].Value, "AlbumArt");
                     return false;
                 }
 
@@ -150,52 +152,151 @@ namespace SRXDFolderSwitcher
                 return GameObject.Find(gameObjPath) == null ? false : true;
             }
 
+            private static void TryMoveFileCollectionToDestination(FileCollection fileCollection, string destinationPath)
+            {
+
+                try
+                {
+                    File.Copy(fileCollection.SrtbName, Path.Combine(destinationPath, fileCollection.SrtbName));
+                    File.Copy(fileCollection.AlbumArtFileName, Path.Combine(destinationPath, fileCollection.SrtbName));
+                    foreach (string file in fileCollection.AudioFileNames)
+                    {
+                        File.Copy(file, Path.Combine(destinationPath, fileCollection.SrtbName));
+                    }
+                }
+                catch (IOException error)
+                {
+                    Logger.LogError(error.Message);
+                }
+
+            }
+
+            private static string GetAudioFilePathWithExtension(string audioFileAssetName)
+            {
+                return ExternalAudioClipAsset.GetPreferredFilePathWithExtension(
+                    ExternalAudioClipAsset.GetExternalRawFilePathWithoutExtension(audioFileAssetName)
+                );
+            }
+
+            private static string GetAlbumArtPathWithExtension(string albumArtAssetName)
+            {
+                return ExternalTexture2DAsset.GetPreferredFilePathWithExtension(
+                    ExternalTexture2DAsset.GetExternalRawFilePathWithoutExtension(albumArtAssetName)
+                );
+            }
+
             private static void OpenFolderChoiceDialog()
             {
                 ModalMessageDialog.ModalMessage msg = new ModalMessageDialog.ModalMessage();
-                msg.message = "balls";
+
+                msg.message = "Choose the destination folder";
                 msg.cancelCallback += () =>
                 {
-                    NotificationSystemGUI.AddMessage("no balls :(");
+                    NotificationSystemGUI.AddMessage("Cancelled move.");
                     _folderSwitchChoice?.SetActive(false);
                 };
                 msg.cancelText = new TranslationReference("UI_No", false);
+
                 msg.affirmativeCallback += () =>
                 {
-                    NotificationSystemGUI.AddMessage("yo ballin :D");
+                    NotificationSystemGUI.AddMessage("Performed move.");
                     _folderSwitchChoice?.SetActive(false);
                 };
                 msg.affirmativeText = new TranslationReference("UI_Yes", false);
+
                 ModalMessageDialog.Instance.AddMessage(msg);
+
                 _folderSwitchChoice?.SetActive(true);
+
                 if (_folderSwitchChoice != null) return;
-                _folderSwitchChoice = Object.Instantiate(BuildSettingsAsset.Instance.multiChoiceOptionPrefab,
+
+                _folderSwitchChoice = UnityEngine.Object.Instantiate(BuildSettingsAsset.Instance.multiChoiceOptionPrefab,
                     ModalMessageDialog.Instance.transform.Find("Container/Body"));
+
                 _folderSwitchChoice.transform.SetSiblingIndex(4);
                 _folderSwitchChoice.name = "FolderSwitchOptions";
-                Object.Destroy(_folderSwitchChoice.GetComponent<XDNavigableOptionMultiChoice_IntValue>());
+
+                UnityEngine.Object.Destroy(_folderSwitchChoice.GetComponent<XDNavigableOptionMultiChoice_IntValue>());
+
                 var multiChoice = _folderSwitchChoice.GetComponent<XDNavigableOptionMultiChoice>();
                 //multiChoice.state.callbacks = new XDNavigableOptionMultiChoice.Callbacks();
                 multiChoice.SetCallbacksAndValue(
                     0,
-                    v => { NotificationSystemGUI.AddMessage("New value: " + v); },
+                    //v => { NotificationSystemGUI.AddMessage("New value: " + v); },
+                    null,
                     () => new IntRange(0, customPaths.Count),
                     v => customPaths[v].Key
                 );
-                _folderSwitchChoice.transform.Find("OptionLabel").GetComponent<CustomTextMeshProUGUI>().text = "cursed";
+
+                _folderSwitchChoice.transform.Find("OptionLabel").GetComponent<CustomTextMeshProUGUI>().text = "Available folders";
+
             }
 
-            [HarmonyPatch(typeof(XDSelectionListMenu), nameof(XDSelectionListMenu.UpdatePreviewHandle)), HarmonyPostfix]
-            private static void Update_Postfix()
+            private static void GetCurrentTrackData()
             {
 
                 if (XDSelectionListMenu.Instance == null) return;
 
-                if (Input.GetKeyDown(KeyCode.F2))
+                FileCollection chart = new FileCollection();
+
+                SRTB thisSrtb = SRTB.DeserializeFromFile(XDSelectionListMenu.Instance.CurrentPreviewTrack.Item1.TrackInfoRef.customFile.FilePath);
+
+                string srtbName = XDSelectionListMenu.Instance.CurrentPreviewTrack.Item1.TrackInfoRef.customFile.FileNameNoExtension + ".srtb";
+
+                string albumArtFilename = XDSelectionListMenu.Instance.CurrentPreviewTrack.Item1.AlbumArtReferenceCopy().AssetName;
+
+                List<string> audioFileNames = new List<string>();
+
+                for (int i = 0; i < thisSrtb.ClipInfoCount; i++)
                 {
-                    NotificationSystemGUI.AddMessage($"Current track: {XDSelectionListMenu.Instance.CurrentPreviewTrack.Item1.TrackInfoRef.customFile.FilePath}");
+                    string fullAudioPath = GetAudioFilePathWithExtension(thisSrtb.GetClipInfo(i).ClipAssetReference.AssetName);
+                    audioFileNames.Add(fullAudioPath == null ? String.Empty : fullAudioPath.Substring(fullAudioPath.LastIndexOf('\\') + 1));
                 }
 
+                chart.SrtbName = srtbName;
+
+                string fullAlbumPath = GetAlbumArtPathWithExtension(albumArtFilename);
+                chart.AlbumArtFileName = fullAlbumPath == null ? String.Empty : fullAlbumPath.Substring(fullAlbumPath.LastIndexOf('\\') + 1);
+
+                chart.AudioFileNames = audioFileNames;
+
+                chart.Dump();
+
+            }
+
+            //[HarmonyPatch(typeof(XDSelectionListMenu), nameof(XDSelectionListMenu.UpdatePreviewHandle)), HarmonyPostfix]
+            //private static void Update_Postfix()
+            //{
+
+            //    if (XDSelectionListMenu.Instance == null) return;
+
+            //    if (Input.GetKeyDown(KeyCode.F2))
+            //    {
+
+            //        var albumArtRefField = (Texture2DAssetReference)AccessTools.Field(typeof(MetadataHandle), "albumArtRef").GetValue(XDSelectionListMenu.Instance.CurrentPreviewTrack.Item1);
+
+            //        //var trackDataMetadataField = (TrackDataMetadataSet)AccessTools.Field(typeof(MetadataHandle), "trackDataMetadata").GetValue(XDSelectionListMenu.Instance.CurrentPreviewTrack.Item1);
+
+            //        var trackDataMetadataField = XDSelectionListMenu.Instance.CurrentPreviewTrack.Item1;
+
+            //        // WHAT IS GOING ON HERE HOLY FUCK
+
+
+            //        //Logger.LogWarning();
+
+            //        //foreach (var item in trackDataMetadataField.TrackDataMetadata.trackDataMetadata)
+            //        //{
+            //        //    Logger.LogWarning(item.ToString());
+            //        //}
+            //        //NotificationSystemGUI.AddMessage($"Current track: {XDSelectionListMenu.Instance.CurrentPreviewTrack.Item1.AlbumArtReferenceCopy().asset.GetAssetFullPath()}");
+            //    }
+
+            //}
+
+            [HarmonyPatch(typeof(XDMenuPlay.TrackMenus.ManageCustomTracksHandler), nameof(XDMenuPlay.TrackMenus.ManageCustomTracksHandler.SetupListItem)), HarmonyPostfix]
+            private static void SetCurrentTrack_Postfix()
+            {
+                GetCurrentTrackData();
             }
 
             [HarmonyPatch(typeof(XDSelectionListMenu), nameof(XDSelectionListMenu.OpenSidePanel)), HarmonyPostfix]
@@ -212,7 +313,7 @@ namespace SRXDFolderSwitcher
                 _clonedButton.gameObject.name = "MoveToFolder";
 
                 GameObject.Destroy(_clonedButton.transform.Find("IconContainer/ButtonText").GetComponent<TranslatedTextMeshPro>());
-                _clonedButton.transform.Find("IconContainer/ButtonText").GetComponent<CustomTextMeshProUGUI>().text = "Move to folder";
+                _clonedButton.transform.Find("IconContainer/ButtonText").GetComponent<CustomTextMeshProUGUI>().text = "Move selected";
                 _clonedButton.transform.SetSiblingIndex(1);
 
                 _clonedButton.GetComponent<XDNavigableButton>().onClick = new UnityEngine.UI.Button.ButtonClickedEvent();

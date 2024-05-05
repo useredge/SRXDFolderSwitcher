@@ -79,6 +79,7 @@
     <Reference Include="UnityEngine">
       <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Spin Rhythm\SpinRhythm_Data\Managed\UnityEngine.dll</HintPath>
     </Reference>
+    <Reference Include="UnityEngine.AudioModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null" />
     <Reference Include="UnityEngine.CoreModule">
       <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Spin Rhythm\SpinRhythm_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
@@ -92,6 +93,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Classes\FileCollection.cs" />
     <Compile Include="Classes\JsonKeyValuePair.cs" />
     <Compile Include="FolderSwitcherPlugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
