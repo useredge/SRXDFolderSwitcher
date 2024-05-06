@@ -13,17 +13,17 @@ using System;
 
 namespace SRXDFolderSwitcher
 {
-    [BepInPlugin("com.useredge.srxdfolderswitcher", "SRXD Folder Switcher", "1.0.0")]
+    [BepInPlugin("com.useredge.srxdfolderswitcher", "SRXD Folder Switcher", "1.1.0")]
     public class FolderSwitcherPlugin : BaseUnityPlugin
     {
         public static new ManualLogSource Logger;
 
         private static string configFilePath = Path.Combine(Paths.ConfigPath, "FolderSwitcherConfig.json");
 
-        private static List<JsonKeyValuePair<string, string>> customPaths = new List<JsonKeyValuePair<string, string>>();
+        public static List<JsonKeyValuePair<string, string>> customPaths = new List<JsonKeyValuePair<string, string>>();
         private static JsonKeyValuePair<string, string> defaultPath = new JsonKeyValuePair<string, string>("Default", "");
 
-        private static int folderIndex;
+        public static int folderIndex;
 
         private static void cycleList()
         {
@@ -143,6 +143,10 @@ namespace SRXDFolderSwitcher
 
             private const string deleteButtonPath = "GameScene/MenuScenes(Clone)/MainMenuWorldSpaceContainer/Canvas/XDSelectionMenu/Container/Content/TabPanelContainer/TabPanelColumn/TabsOffset/TabsContainer/TabPanelDisplayList/TabPanel_ManageCustoms(Clone)/Scroll List Tab Prefab/Scroll View/Viewport/Content/ManageTrackPopout/";
 
+            private static FileCollection currentFileCollection;
+
+            private static int intentToMoveIndex = 0;
+
             private static GameObject _clonedButton;
 
             private static GameObject _folderSwitchChoice;
@@ -157,16 +161,33 @@ namespace SRXDFolderSwitcher
 
                 try
                 {
-                    File.Copy(fileCollection.SrtbName, Path.Combine(destinationPath, fileCollection.SrtbName));
-                    File.Copy(fileCollection.AlbumArtFileName, Path.Combine(destinationPath, fileCollection.SrtbName));
+                    File.Copy(
+                        Path.Combine(AssetBundleSystem.CUSTOM_DATA_PATH, fileCollection.SrtbName), Path.Combine(destinationPath, fileCollection.SrtbName)
+                    );
+
+                    if (fileCollection.AlbumArtFileName != null || fileCollection.AlbumArtFileName != String.Empty)
+                    {
+                        File.Copy(
+                            Path.Combine(ExternalTexture2DAsset.ExternalRawFilePath, fileCollection.AlbumArtFileName), Path.Combine(destinationPath, "AlbumArt", fileCollection.AlbumArtFileName)
+                        );
+                    }
+
                     foreach (string file in fileCollection.AudioFileNames)
                     {
-                        File.Copy(file, Path.Combine(destinationPath, fileCollection.SrtbName));
+                        if (file == null || file == String.Empty) continue;
+
+                        File.Copy(
+                            Path.Combine(ExternalAudioClipAsset.CustomsRawFilePath, file), Path.Combine(destinationPath, "AudioClips", file)
+                        );
                     }
+
+                    NotificationSystemGUI.AddMessage("Chart moved successfully.");
+
                 }
                 catch (IOException error)
                 {
-                    Logger.LogError(error.Message);
+                    //Logger.LogError(error.Message);
+                    NotificationSystemGUI.AddMessage(error.Message, 6);
                 }
 
             }
@@ -187,6 +208,9 @@ namespace SRXDFolderSwitcher
 
             private static void OpenFolderChoiceDialog()
             {
+
+                GetCurrentTrackData();
+
                 ModalMessageDialog.ModalMessage msg = new ModalMessageDialog.ModalMessage();
 
                 msg.message = "Choose the destination folder";
@@ -199,7 +223,7 @@ namespace SRXDFolderSwitcher
 
                 msg.affirmativeCallback += () =>
                 {
-                    NotificationSystemGUI.AddMessage("Performed move.");
+                    TryMoveFileCollectionToDestination(currentFileCollection, customPaths[intentToMoveIndex].Value);
                     _folderSwitchChoice?.SetActive(false);
                 };
                 msg.affirmativeText = new TranslationReference("UI_Yes", false);
@@ -221,9 +245,9 @@ namespace SRXDFolderSwitcher
                 var multiChoice = _folderSwitchChoice.GetComponent<XDNavigableOptionMultiChoice>();
                 //multiChoice.state.callbacks = new XDNavigableOptionMultiChoice.Callbacks();
                 multiChoice.SetCallbacksAndValue(
-                    0,
+                    intentToMoveIndex,
                     //v => { NotificationSystemGUI.AddMessage("New value: " + v); },
-                    null,
+                    value => { intentToMoveIndex = value; },
                     () => new IntRange(0, customPaths.Count),
                     v => customPaths[v].Key
                 );
@@ -234,8 +258,6 @@ namespace SRXDFolderSwitcher
 
             private static void GetCurrentTrackData()
             {
-
-                if (XDSelectionListMenu.Instance == null) return;
 
                 FileCollection chart = new FileCollection();
 
@@ -260,43 +282,10 @@ namespace SRXDFolderSwitcher
 
                 chart.AudioFileNames = audioFileNames;
 
-                chart.Dump();
+                //chart.Dump();
 
-            }
+                currentFileCollection = chart;
 
-            //[HarmonyPatch(typeof(XDSelectionListMenu), nameof(XDSelectionListMenu.UpdatePreviewHandle)), HarmonyPostfix]
-            //private static void Update_Postfix()
-            //{
-
-            //    if (XDSelectionListMenu.Instance == null) return;
-
-            //    if (Input.GetKeyDown(KeyCode.F2))
-            //    {
-
-            //        var albumArtRefField = (Texture2DAssetReference)AccessTools.Field(typeof(MetadataHandle), "albumArtRef").GetValue(XDSelectionListMenu.Instance.CurrentPreviewTrack.Item1);
-
-            //        //var trackDataMetadataField = (TrackDataMetadataSet)AccessTools.Field(typeof(MetadataHandle), "trackDataMetadata").GetValue(XDSelectionListMenu.Instance.CurrentPreviewTrack.Item1);
-
-            //        var trackDataMetadataField = XDSelectionListMenu.Instance.CurrentPreviewTrack.Item1;
-
-            //        // WHAT IS GOING ON HERE HOLY FUCK
-
-
-            //        //Logger.LogWarning();
-
-            //        //foreach (var item in trackDataMetadataField.TrackDataMetadata.trackDataMetadata)
-            //        //{
-            //        //    Logger.LogWarning(item.ToString());
-            //        //}
-            //        //NotificationSystemGUI.AddMessage($"Current track: {XDSelectionListMenu.Instance.CurrentPreviewTrack.Item1.AlbumArtReferenceCopy().asset.GetAssetFullPath()}");
-            //    }
-
-            //}
-
-            [HarmonyPatch(typeof(XDMenuPlay.TrackMenus.ManageCustomTracksHandler), nameof(XDMenuPlay.TrackMenus.ManageCustomTracksHandler.SetupListItem)), HarmonyPostfix]
-            private static void SetCurrentTrack_Postfix()
-            {
-                GetCurrentTrackData();
             }
 
             [HarmonyPatch(typeof(XDSelectionListMenu), nameof(XDSelectionListMenu.OpenSidePanel)), HarmonyPostfix]
@@ -318,6 +307,7 @@ namespace SRXDFolderSwitcher
 
                 _clonedButton.GetComponent<XDNavigableButton>().onClick = new UnityEngine.UI.Button.ButtonClickedEvent();
                 _clonedButton.GetComponent<XDNavigableButton>().onClick.AddListener(OpenFolderChoiceDialog);
+
 
             }
 
