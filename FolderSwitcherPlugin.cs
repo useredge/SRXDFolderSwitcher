@@ -34,6 +34,8 @@ namespace SRXDFolderSwitcher
                 folderIndex = 0;
             }
 
+            SelectionPatches.UpdateCurrentFolderText();
+
         }
 
         private void Awake()
@@ -45,11 +47,11 @@ namespace SRXDFolderSwitcher
 
             if (File.Exists(configFilePath))
             {
-                Logger.LogInfo($"File exists. Reading.");
+                Logger.LogWarning($"File exists. Reading.");
 
                 customPaths = JsonConvert.DeserializeObject<List<JsonKeyValuePair<string, string>>>(File.ReadAllText(configFilePath));
 
-                Logger.LogInfo($"Discovered paths: ");
+                Logger.LogWarning($"Discovered paths: ");
                 foreach (JsonKeyValuePair<string, string> path in customPaths)
                 {
                     Logger.LogInfo(path.Key);
@@ -64,7 +66,7 @@ namespace SRXDFolderSwitcher
                 customPaths.Add(defaultPath);
                 File.WriteAllText(configFilePath, JsonConvert.SerializeObject(customPaths, Formatting.Indented));
 
-                Logger.LogDebug($"-- File created at: {configFilePath} --");
+                Logger.LogWarning($"-- File created at: {configFilePath} --");
             }
 
             folderIndex = customPaths.Count - 1;
@@ -149,9 +151,11 @@ namespace SRXDFolderSwitcher
 
             private static GameObject _moveButton;
             private static GameObject _copyButton;
-            private static GameObject _pasteButton;
+            private static GameObject _clearClipboard;
 
             private static GameObject _clipboardCount;
+
+            private static GameObject _currentFolder;
 
             private static GameObject _folderSwitchChoice;
 
@@ -224,14 +228,17 @@ namespace SRXDFolderSwitcher
                         NotificationSystemGUI.AddMessage(error.Message, 6);
                     }
 
-                    var refreshMethod = AccessTools.Method(typeof(CustomAssetLoadingHelper), "FullRefresh");
-
-                    refreshMethod.Invoke(CustomAssetLoadingHelper.Instance, null);
-
                     NotificationSystemGUI.AddMessage($"{fileCollection.SrtbName} moved successfully.", 6);
 
                 }
 
+            }
+
+            private static void CallTrackListRefresh()
+            {
+                var refreshMethod = AccessTools.Method(typeof(CustomAssetLoadingHelper), "FullRefresh");
+
+                refreshMethod.Invoke(CustomAssetLoadingHelper.Instance, null);
             }
 
             private static string GetAudioFilePathWithExtension(string audioFileAssetName)
@@ -272,6 +279,7 @@ namespace SRXDFolderSwitcher
 
                     fileCollectionList.Clear();
                     UpdateClipboardCount();
+                    CallTrackListRefresh();
                     _folderSwitchChoice?.SetActive(false);
                 };
                 msg.affirmativeText = new TranslationReference("UI_Yes", false);
@@ -307,13 +315,15 @@ namespace SRXDFolderSwitcher
             private static void GetCurrentTrackData()
             {
 
-                if (fileCollectionList.Any(x => x.SrtbName == XDSelectionListMenu.Instance.CurrentPreviewTrack.Item1.TrackInfoRef.customFile.FileNameNoExtension + ".srtb")) return;
+                string fileNameNoExt = XDSelectionListMenu.Instance.CurrentPreviewTrack.Item1.TrackInfoRef.customFile.FileNameNoExtension;
+
+                if (fileCollectionList.Any(x => x.SrtbName == fileNameNoExt + ".srtb")) return;
 
                 FileCollection chart = new FileCollection();
 
                 SRTB thisSrtb = SRTB.DeserializeFromFile(XDSelectionListMenu.Instance.CurrentPreviewTrack.Item1.TrackInfoRef.customFile.FilePath);
 
-                string srtbName = XDSelectionListMenu.Instance.CurrentPreviewTrack.Item1.TrackInfoRef.customFile.FileNameNoExtension + ".srtb";
+                string srtbName = fileNameNoExt + ".srtb";
 
                 string albumArtFilename = XDSelectionListMenu.Instance.CurrentPreviewTrack.Item1.AlbumArtReferenceCopy().AssetName;
 
@@ -342,7 +352,7 @@ namespace SRXDFolderSwitcher
             {
                 _clipboardCount.transform.Find("Filename").GetComponent<CustomTextMeshProUGUI>().text = "Charts in clipboard: " + fileCollectionList.Count();
 
-                Logger.LogWarning("------");
+                Logger.LogWarning("--- Clipboard list ---");
                 foreach (var item in fileCollectionList)
                 {
                     Logger.LogWarning(item.SrtbName);
@@ -351,41 +361,18 @@ namespace SRXDFolderSwitcher
 
             }
 
+            public static void UpdateCurrentFolderText()
+            {
+                _currentFolder?.transform.Find("Filename").GetComponent<CustomTextMeshProUGUI>()?.SetText("Current custom folder: " + customPaths[folderIndex].Key);
+            }
+
             [HarmonyPatch(typeof(XDSelectionListMenu), nameof(XDSelectionListMenu.OpenSidePanel)), HarmonyPostfix]
-            private static void CloneButton_Postfix()
+            private static void CreateUI_Postfix()
             {
 
                 if (!GameObjectExists(deleteButtonPath + "DeleteSelected")) return;
 
                 if (_moveButton != null) return;
-
-                //Move button
-
-                var deleteButton = GameObject.Find(deleteButtonPath + "DeleteSelected");
-
-                _moveButton = GameObject.Instantiate(deleteButton, deleteButton.transform.parent);
-
-                _moveButton.gameObject.name = "MoveToFolder";
-
-                GameObject.Destroy(_moveButton.transform.Find("IconContainer/ButtonText").GetComponent<TranslatedTextMeshPro>());
-                _moveButton.transform.Find("IconContainer/ButtonText").GetComponent<CustomTextMeshProUGUI>().text = "Move selected";
-                _moveButton.transform.SetSiblingIndex(1);
-
-                _moveButton.GetComponent<XDNavigableButton>().onClick = new UnityEngine.UI.Button.ButtonClickedEvent();
-                _moveButton.GetComponent<XDNavigableButton>().onClick.AddListener(OpenFolderChoiceDialog);
-
-                //Copy to clipboard
-
-                _copyButton = GameObject.Instantiate(deleteButton, deleteButton.transform.parent);
-
-                _copyButton.gameObject.name = "CopyToClipboard";
-
-                GameObject.Destroy(_copyButton.transform.Find("IconContainer/ButtonText").GetComponent<TranslatedTextMeshPro>());
-                _copyButton.transform.Find("IconContainer/ButtonText").GetComponent<CustomTextMeshProUGUI>().text = "Copy to clipboard";
-                _copyButton.transform.SetSiblingIndex(2);
-
-                _copyButton.GetComponent<XDNavigableButton>().onClick = new UnityEngine.UI.Button.ButtonClickedEvent();
-                _copyButton.GetComponent<XDNavigableButton>().onClick.AddListener(() => { GetCurrentTrackData(); NotificationSystemGUI.AddMessage($"Added chart to clipboard."); UpdateClipboardCount(); });
 
                 // charts in clipboard
 
@@ -398,28 +385,75 @@ namespace SRXDFolderSwitcher
                 _clipboardCount.transform.Find("Filename").GetComponent<CustomTextMeshProUGUI>().text = "Charts in clipboard: " + fileCollectionList.Count();
                 _clipboardCount.transform.SetSiblingIndex(1);
 
-                //paste from clipboard
+                // current folder
 
-                //_pasteButton = GameObject.Instantiate(deleteButton, deleteButton.transform.parent);
+                _currentFolder = GameObject.Instantiate(filenameString, filenameString.transform.parent);
+                _currentFolder.gameObject.name = "CurrentCustomFolder";
 
-                //_pasteButton.gameObject.name = "PasteFromClipboard";
+                GameObject.Destroy(_currentFolder.transform.Find("Filename").GetComponent<TranslatedTextMeshPro>());
+                _currentFolder.transform.Find("Filename").GetComponent<CustomTextMeshProUGUI>().text = "Current custom folder: " + customPaths[folderIndex].Key;
+                _currentFolder.transform.SetSiblingIndex(2);
 
-                //GameObject.Destroy(_pasteButton.transform.Find("IconContainer/ButtonText").GetComponent<TranslatedTextMeshPro>());
-                //_pasteButton.transform.Find("IconContainer/ButtonText").GetComponent<CustomTextMeshProUGUI>().text = "Paste from clipboard";
-                //_pasteButton.transform.SetSiblingIndex(3);
+                //Move button
 
-                //_pasteButton.GetComponent<XDNavigableButton>().onClick = new UnityEngine.UI.Button.ButtonClickedEvent();
-                //_pasteButton.GetComponent<XDNavigableButton>().onClick.AddListener(
-                //    () => { 
-                //        foreach(FileCollection chart in currentFileCollection)
-                //        {
-                //            TryMoveFileCollectionToDestination(chart, customPaths[folderIndex].Value);
-                //        };
-                //        currentFileCollection.Clear();
-                //    }
-                //);
+                var deleteButton = GameObject.Find(deleteButtonPath + "DeleteSelected");
 
+                _moveButton = GameObject.Instantiate(deleteButton, deleteButton.transform.parent);
 
+                _moveButton.gameObject.name = "MoveToFolder";
+
+                GameObject.Destroy(_moveButton.transform.Find("IconContainer/ButtonText").GetComponent<TranslatedTextMeshPro>());
+                _moveButton.transform.Find("IconContainer/ButtonText").GetComponent<CustomTextMeshProUGUI>().text = "Move selected";
+                _moveButton.transform.SetSiblingIndex(3);
+
+                _moveButton.GetComponent<XDNavigableButton>().onClick = new UnityEngine.UI.Button.ButtonClickedEvent();
+                _moveButton.GetComponent<XDNavigableButton>().onClick.AddListener(
+                    () =>
+                    {
+                        if(fileCollectionList.Count == 0)
+                        {
+                            NotificationSystemGUI.AddMessage("There are no charts in the clipboard.");
+                            return;
+                        }
+
+                        OpenFolderChoiceDialog();
+                    }
+                    );
+
+                //Copy to clipboard
+
+                _copyButton = GameObject.Instantiate(deleteButton, deleteButton.transform.parent);
+
+                _copyButton.gameObject.name = "CopyToClipboard";
+
+                GameObject.Destroy(_copyButton.transform.Find("IconContainer/ButtonText").GetComponent<TranslatedTextMeshPro>());
+                _copyButton.transform.Find("IconContainer/ButtonText").GetComponent<CustomTextMeshProUGUI>().text = "Copy to clipboard";
+                _copyButton.transform.SetSiblingIndex(4);
+
+                _copyButton.GetComponent<XDNavigableButton>().onClick = new UnityEngine.UI.Button.ButtonClickedEvent();
+                _copyButton.GetComponent<XDNavigableButton>().onClick.AddListener(() => { GetCurrentTrackData(); NotificationSystemGUI.AddMessage($"Added chart to clipboard."); UpdateClipboardCount(); });
+
+                //clear clipboard
+
+                _clearClipboard = GameObject.Instantiate(deleteButton, deleteButton.transform.parent);
+
+                _clearClipboard.gameObject.name = "CleearClipboard";
+
+                GameObject.Destroy(_clearClipboard.transform.Find("IconContainer/ButtonText").GetComponent<TranslatedTextMeshPro>());
+                _clearClipboard.transform.Find("IconContainer/ButtonText").GetComponent<CustomTextMeshProUGUI>().text = "Clear clipboard";
+                _clearClipboard.transform.SetSiblingIndex(5);
+
+                _clearClipboard.GetComponent<XDNavigableButton>().onClick = new UnityEngine.UI.Button.ButtonClickedEvent();
+                _clearClipboard.GetComponent<XDNavigableButton>().onClick.AddListener(() => { fileCollectionList.Clear(); NotificationSystemGUI.AddMessage("Clipboard cleared."); UpdateClipboardCount(); });
+
+            }
+
+            [HarmonyPatch(typeof(XDMainMenu), nameof(XDMainMenu.OpenMenu)), HarmonyPostfix]
+            private static void ClearClipboardOnOpen_Postfix()
+            {
+                if (fileCollectionList.Count == 0) return;
+                fileCollectionList.Clear();
+                UpdateClipboardCount();
             }
 
         }
