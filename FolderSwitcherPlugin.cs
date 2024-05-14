@@ -47,29 +47,34 @@ namespace SRXDFolderSwitcher
 
             if (File.Exists(configFilePath))
             {
-                Logger.LogWarning($"File exists. Reading.");
+                Logger.LogWarning($"-- Configuration file found. Reading. --");
 
                 customPaths = JsonConvert.DeserializeObject<List<JsonKeyValuePair<string, string>>>(File.ReadAllText(configFilePath));
 
                 Logger.LogWarning($"Discovered paths: ");
                 foreach (JsonKeyValuePair<string, string> path in customPaths)
                 {
-                    Logger.LogInfo(path.Key);
+                    if (!Directory.Exists(path.Value))
+                    {
+                        Logger.LogWarning($"The folder \"{path.Key}\" does not currently exist. \nIt will be created when switched to.");
+                    }
+                    else
+                    {
+                        Logger.LogInfo(path.Key);
+                    }
                 }
 
-                if (!customPaths.Contains(defaultPath)) customPaths.Add(defaultPath);
+                if (!customPaths.Contains(defaultPath)) customPaths.Insert(0, defaultPath);
             }
             else
             {
-                Logger.LogWarning($"Configuration file not found. Creating...");
+                Logger.LogWarning($"-- Configuration file not found. Creating... --");
 
                 customPaths.Add(defaultPath);
                 File.WriteAllText(configFilePath, JsonConvert.SerializeObject(customPaths, Formatting.Indented));
 
                 Logger.LogWarning($"-- File created at: {configFilePath} --");
             }
-
-            folderIndex = customPaths.Count - 1;
 
         }
 
@@ -144,6 +149,7 @@ namespace SRXDFolderSwitcher
         {
 
             private const string deleteButtonPath = "GameScene/MenuScenes(Clone)/MainMenuWorldSpaceContainer/Canvas/XDSelectionMenu/Container/Content/TabPanelContainer/TabPanelColumn/TabsOffset/TabsContainer/TabPanelDisplayList/TabPanel_ManageCustoms(Clone)/Scroll List Tab Prefab/Scroll View/Viewport/Content/ManageTrackPopout/";
+            //private const string deleteButtonPathVR = "GameScene/MenuScenes(Clone)/MainMenuWorldSpaceContainer/Canvas/XDSelectionMenu/Container/Content/VROffsetLeft/TabPanelContainer/TabPanelColumn/TabsOffset/TabsContainer/TabPanelDisplayList/TabPanel_ManageCustoms(Clone)/Scroll List Tab Prefab/Scroll View/Viewport/Content/ManageTrackPopout/";
 
             private static List<FileCollection> fileCollectionList = new List<FileCollection>();
 
@@ -293,7 +299,8 @@ namespace SRXDFolderSwitcher
                 _folderSwitchChoice = UnityEngine.Object.Instantiate(BuildSettingsAsset.Instance.multiChoiceOptionPrefab,
                     ModalMessageDialog.Instance.transform.Find("Container/Body"));
 
-                _folderSwitchChoice.transform.SetSiblingIndex(4);
+                // index = 4 in old build
+                _folderSwitchChoice.transform.SetSiblingIndex(5);
                 _folderSwitchChoice.name = "FolderSwitchOptions";
 
                 UnityEngine.Object.Destroy(_folderSwitchChoice.GetComponent<XDNavigableOptionMultiChoice_IntValue>());
@@ -410,7 +417,7 @@ namespace SRXDFolderSwitcher
                 _moveButton.GetComponent<XDNavigableButton>().onClick.AddListener(
                     () =>
                     {
-                        if(fileCollectionList.Count == 0)
+                        if (fileCollectionList.Count == 0)
                         {
                             NotificationSystemGUI.AddMessage("There are no charts in the clipboard.");
                             return;
