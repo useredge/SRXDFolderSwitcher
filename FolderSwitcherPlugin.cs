@@ -163,14 +163,14 @@ namespace SRXDFolderSwitcher
 
             private static GameObject _currentFolder;
 
-            private static GameObject _folderSwitchChoice;
+            private static GameObject _folderSwitchMultiChoice;
 
             private static bool GameObjectExists(string gameObjPath)
             {
                 return GameObject.Find(gameObjPath) == null ? false : true;
             }
 
-            private static void TryMoveFileCollectionToDestination(FileCollection fileCollection, string destinationPath)
+            private static void TryMoveFileCollectionToDestination(FileCollection fileCollection, string destinationPath, ref int successfulTransfers)
             {
 
                 bool hasCopiedFile = false;
@@ -179,31 +179,32 @@ namespace SRXDFolderSwitcher
                 {
                     File.Copy(
                         Path.Combine(AssetBundleSystem.CUSTOM_DATA_PATH, fileCollection.SrtbName), Path.Combine(destinationPath, fileCollection.SrtbName)
-                    );
+                    , false);
 
-                    if (fileCollection.AlbumArtFileName != null || fileCollection.AlbumArtFileName != String.Empty)
+                    if (fileCollection.AlbumArtFileName != "" || fileCollection.AlbumArtFileName != String.Empty)
                     {
                         File.Copy(
                             Path.Combine(ExternalTexture2DAsset.ExternalRawFilePath, fileCollection.AlbumArtFileName), Path.Combine(destinationPath, "AlbumArt", fileCollection.AlbumArtFileName)
-                        );
+                        , true);
                     }
 
                     foreach (string file in fileCollection.AudioFileNames)
                     {
-                        if (file == null || file == String.Empty) continue;
+                        if (file == "" || file == String.Empty) continue;
 
                         File.Copy(
                             Path.Combine(ExternalAudioClipAsset.CustomsRawFilePath, file), Path.Combine(destinationPath, "AudioClips", file)
-                        );
+                        , true);
                     }
 
                     hasCopiedFile = true;
+                    successfulTransfers++;
 
                 }
                 catch (IOException error)
                 {
                     //Logger.LogError(error.Message);
-                    NotificationSystemGUI.AddMessage(error.Message, 6);
+                    NotificationSystemGUI.AddMessage(String.Concat("COPY: ", error.Message), 6);
                 }
 
                 if (File.Exists(Path.Combine(destinationPath, fileCollection.SrtbName)))
@@ -216,14 +217,14 @@ namespace SRXDFolderSwitcher
 
                         File.Delete(Path.Combine(AssetBundleSystem.CUSTOM_DATA_PATH, fileCollection.SrtbName));
 
-                        if (fileCollection.AlbumArtFileName != null || fileCollection.AlbumArtFileName != String.Empty)
+                        if (fileCollection.AlbumArtFileName != "" || fileCollection.AlbumArtFileName != String.Empty)
                         {
                             File.Delete(Path.Combine(ExternalTexture2DAsset.ExternalRawFilePath, fileCollection.AlbumArtFileName));
                         }
 
                         foreach (string file in fileCollection.AudioFileNames)
                         {
-                            if (file == null || file == String.Empty) continue;
+                            if (file == "" || file == String.Empty) continue;
 
                             File.Delete(Path.Combine(ExternalAudioClipAsset.CustomsRawFilePath, file));
                         }
@@ -231,10 +232,10 @@ namespace SRXDFolderSwitcher
                     }
                     catch (IOException error)
                     {
-                        NotificationSystemGUI.AddMessage(error.Message, 6);
+                        NotificationSystemGUI.AddMessage(String.Concat("DELETE: ", error.Message), 6);
                     }
 
-                    NotificationSystemGUI.AddMessage($"{fileCollection.SrtbName} moved successfully.", 6);
+                    //NotificationSystemGUI.AddMessage($"{fileCollection.SrtbName} moved successfully.", 6);
 
                 }
 
@@ -272,40 +273,45 @@ namespace SRXDFolderSwitcher
                 msg.cancelCallback += () =>
                 {
                     NotificationSystemGUI.AddMessage("Cancelled move.");
-                    _folderSwitchChoice?.SetActive(false);
+                    _folderSwitchMultiChoice?.SetActive(false);
                 };
                 msg.cancelText = new TranslationReference("UI_No", false);
 
                 msg.affirmativeCallback += () =>
                 {
+
+                    int successfulTransfers = 0;
+
                     foreach (FileCollection chart in fileCollectionList)
                     {
-                        TryMoveFileCollectionToDestination(chart, customPaths[intentToMoveIndex].Value);
+                        TryMoveFileCollectionToDestination(chart, customPaths[intentToMoveIndex].Value, ref successfulTransfers);
                     }
+
+                    if (successfulTransfers > 0) NotificationSystemGUI.AddMessage($"Successfully moved {successfulTransfers} charts!");
 
                     fileCollectionList.Clear();
                     UpdateClipboardCount();
                     CallTrackListRefresh();
-                    _folderSwitchChoice?.SetActive(false);
+                    _folderSwitchMultiChoice?.SetActive(false);
                 };
                 msg.affirmativeText = new TranslationReference("UI_Yes", false);
 
                 ModalMessageDialog.Instance.AddMessage(msg);
 
-                _folderSwitchChoice?.SetActive(true);
+                _folderSwitchMultiChoice?.SetActive(true);
 
-                if (_folderSwitchChoice != null) return;
+                if (_folderSwitchMultiChoice != null) return;
 
-                _folderSwitchChoice = UnityEngine.Object.Instantiate(BuildSettingsAsset.Instance.multiChoiceOptionPrefab,
+                _folderSwitchMultiChoice = UnityEngine.Object.Instantiate(BuildSettingsAsset.Instance.multiChoiceOptionPrefab,
                     ModalMessageDialog.Instance.transform.Find("Container/Body"));
 
                 // index = 4 in old build
-                _folderSwitchChoice.transform.SetSiblingIndex(5);
-                _folderSwitchChoice.name = "FolderSwitchOptions";
+                _folderSwitchMultiChoice.transform.SetSiblingIndex(5);
+                _folderSwitchMultiChoice.name = "FolderSwitchOptions";
 
-                UnityEngine.Object.Destroy(_folderSwitchChoice.GetComponent<XDNavigableOptionMultiChoice_IntValue>());
+                UnityEngine.Object.Destroy(_folderSwitchMultiChoice.GetComponent<XDNavigableOptionMultiChoice_IntValue>());
 
-                var multiChoice = _folderSwitchChoice.GetComponent<XDNavigableOptionMultiChoice>();
+                var multiChoice = _folderSwitchMultiChoice.GetComponent<XDNavigableOptionMultiChoice>();
                 //multiChoice.state.callbacks = new XDNavigableOptionMultiChoice.Callbacks();
                 multiChoice.SetCallbacksAndValue(
                     intentToMoveIndex,
@@ -315,7 +321,7 @@ namespace SRXDFolderSwitcher
                     v => customPaths[v].Key
                 );
 
-                _folderSwitchChoice.transform.Find("OptionLabel").GetComponent<CustomTextMeshProUGUI>().text = "Available folders";
+                _folderSwitchMultiChoice.transform.Find("OptionLabel").GetComponent<CustomTextMeshProUGUI>().text = "Available folders";
 
             }
 
@@ -461,6 +467,19 @@ namespace SRXDFolderSwitcher
                 if (fileCollectionList.Count == 0) return;
                 fileCollectionList.Clear();
                 UpdateClipboardCount();
+            }
+
+            [HarmonyPatch(typeof(XDSelectionListMenu), "Update"), HarmonyPostfix]
+            private static void CtrlPlusC_Postfix()
+            {
+
+                if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) && Input.GetKeyDown(KeyCode.C))
+                {
+                    GetCurrentTrackData();
+                    NotificationSystemGUI.AddMessage($"Added chart to clipboard.");
+                    UpdateClipboardCount();
+                }
+
             }
 
         }
