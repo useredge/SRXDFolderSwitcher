@@ -148,8 +148,8 @@ namespace SRXDFolderSwitcher
         public class SelectionPatches
         {
 
-            private const string deleteButtonPath = "GameScene/MenuScenes(Clone)/MainMenuWorldSpaceContainer/Canvas/XDSelectionMenu/Container/Content/TabPanelContainer/TabPanelColumn/TabsOffset/TabsContainer/TabPanelDisplayList/TabPanel_ManageCustoms(Clone)/Scroll List Tab Prefab/Scroll View/Viewport/Content/ManageTrackPopout/";
-            //private const string deleteButtonPathVR = "GameScene/MenuScenes(Clone)/MainMenuWorldSpaceContainer/Canvas/XDSelectionMenu/Container/Content/VROffsetLeft/TabPanelContainer/TabPanelColumn/TabsOffset/TabsContainer/TabPanelDisplayList/TabPanel_ManageCustoms(Clone)/Scroll List Tab Prefab/Scroll View/Viewport/Content/ManageTrackPopout/";
+            //private const string deleteButtonPath = "GameScene/MenuScenes(Clone)/MainMenuWorldSpaceContainer/Canvas/XDSelectionMenu/Container/Content/TabPanelContainer/TabPanelColumn/TabsOffset/TabsContainer/TabPanelDisplayList/TabPanel_ManageCustoms(Clone)/Scroll List Tab Prefab/Scroll View/Viewport/Content/ManageTrackPopout/";
+            private const string deleteButtonPath = "GameScene/MenuScenes(Clone)/MainMenuWorldSpaceContainer/Canvas/XDSelectionMenu/Container/Content/VROffsetLeft/TabPanelContainer/TabPanelColumn/TabsOffset/TabsContainer/TabPanelDisplayList/TabPanel_ManageCustoms(Clone)/Scroll List Tab Prefab/Scroll View/Viewport/Content/ManageTrackPopout/";
 
             private static List<FileCollection> fileCollectionList = new List<FileCollection>();
 
@@ -244,6 +244,12 @@ namespace SRXDFolderSwitcher
             private static void CallTrackListRefresh()
             {
                 var refreshMethod = AccessTools.Method(typeof(CustomAssetLoadingHelper), "FullRefresh");
+
+                refreshMethod.Invoke(CustomAssetLoadingHelper.Instance, null);
+            }
+            private static void CreateNewFolder()
+            {
+                var refreshMethod = AccessTools.Method(typeof(CustomAssetLoadingHelper), "PopulateCustomTrackList");
 
                 refreshMethod.Invoke(CustomAssetLoadingHelper.Instance, null);
             }
@@ -382,6 +388,8 @@ namespace SRXDFolderSwitcher
             [HarmonyPatch(typeof(XDSelectionListMenu), nameof(XDSelectionListMenu.OpenSidePanel)), HarmonyPostfix]
             private static void CreateUI_Postfix()
             {
+
+                if (!Directory.Exists(customPaths[folderIndex].Value)) CreateNewFolder();
 
                 if (!GameObjectExists(deleteButtonPath + "DeleteSelected")) return;
 
