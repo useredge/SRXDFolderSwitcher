@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 
 namespace SRXDFolderSwitcher.Classes
 {
-    public class JsonKeyValuePair<TKey, TValue>
+    public class PathEntry<TKey, TValue>
     {
         [JsonProperty("Folder label")]
         public TKey Key { get; set; }
@@ -15,7 +15,7 @@ namespace SRXDFolderSwitcher.Classes
         [JsonProperty("Folder path")]
         public TValue Value { get; set; }
 
-        public JsonKeyValuePair(TKey key, TValue value)
+        public PathEntry(TKey key, TValue value)
         {
             Key = key;
             Value = value;

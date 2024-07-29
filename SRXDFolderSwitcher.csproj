@@ -38,9 +38,6 @@
     <Reference Include="Assembly-CSharp">
       <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Spin Rhythm\SpinRhythm_Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>
-    <Reference Include="Assembly-CSharp-publicized">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Spin Rhythm\SpinRhythm_Data\Managed\Assembly-CSharp-publicized.dll</HintPath>
-    </Reference>
     <Reference Include="BepInEx">
       <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Spin Rhythm\BepInEx\core\BepInEx.dll</HintPath>
     </Reference>
@@ -50,11 +47,11 @@
     <Reference Include="ChartHelper.Parsing">
       <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Spin Rhythm\BepInEx\plugins\ChartHelper.Parsing.dll</HintPath>
     </Reference>
-    <Reference Include="ChartHelper.Types">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Spin Rhythm\BepInEx\plugins\ChartHelper.Types.dll</HintPath>
-    </Reference>
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Spin Rhythm\BepInEx\plugins\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="SpinCore">
+      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Spin Rhythm\BepInEx\plugins\SpinCore.dll</HintPath>
     </Reference>
     <Reference Include="SSD.Game">
       <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Spin Rhythm\SpinRhythm_Data\Managed\SSD.Game.dll</HintPath>
@@ -93,10 +90,20 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Classes\ConfigSchema.cs" />
+    <Compile Include="ConfigurationManager.cs" />
     <Compile Include="Classes\FileCollection.cs" />
-    <Compile Include="Classes\JsonKeyValuePair.cs" />
     <Compile Include="FolderSwitcherPlugin.cs" />
+    <Compile Include="Patches\SelectionPatches.cs" />
+    <Compile Include="Patches\PathPatches.cs" />
+    <Compile Include="Classes\PathEntry.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\icon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\keys.json" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

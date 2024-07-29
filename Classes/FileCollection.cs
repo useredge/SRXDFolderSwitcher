@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SRXDFolderSwitcher.Classes
 {
-    struct FileCollection
+    public struct FileCollection
     {
         public string SrtbName { get; set; }
 

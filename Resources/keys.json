@@ -1,0 +1,61 @@
+{
+  "FSP_TabName": {
+    "en": "Folder Switcher",
+    "it": "Folder Switcher"
+  },
+
+  "FSP_SwitchFolderButton": {
+    "en": "Switch folder",
+    "it": "Cambia cartella"
+  },
+
+  "FSP_FolderPickerInDialog": {
+    "en": "Available folders",
+    "it": "Cartelle disponibili"
+  },
+
+  "FSP_Status": {
+    "en": "Status",
+    "it": "Stato"
+  },
+
+  "FSP_Actions": {
+    "en": "Actions",
+    "it": "Azioni"
+  },
+
+  "FSP_MoveSelected": {
+    "en": "Move selected",
+    "it": "Sposta selezionati"
+  },
+
+  "FSP_CopyToClipboard": {
+    "en": "Copy to clipboard",
+    "it": "Copia nella clipboard"
+  },
+
+  "FSP_ClearClipboard": {
+    "en": "Clear clipboard",
+    "it": "Svuota clipboard"
+  },
+
+  "FSP_CurrentFolder": {
+    "en": "Current folder: ",
+    "it": "Cartella attuale: "
+  },
+
+  "FSP_FileCollectionCount": {
+    "en": "Charts in clipboard: ",
+    "it": "Chart nella clipboard: "
+  },
+
+  "FSP_Header_SwitchFolder": {
+    "en": "Choose folder",
+    "it": "Scegli cartella"
+  },
+
+  "FSP_Header_MoveToFolder": {
+    "en": "Choose destination folder",
+    "it": "Scegli cartella di destinazione"
+  }
+}
