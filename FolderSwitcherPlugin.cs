@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Reflection;
 using System.Collections.Generic;
+using System.Linq;
 
 using BepInEx;
 using BepInEx.Logging;
@@ -17,7 +18,6 @@ using SpinCore.Translation;
 
 using SRXDFolderSwitcher.Classes;
 using SRXDFolderSwitcher.Patches;
-using System.Linq;
 
 namespace SRXDFolderSwitcher
 {
@@ -33,10 +33,14 @@ namespace SRXDFolderSwitcher
         public static List<PathEntry<string, string>> customPaths = new List<PathEntry<string, string>>();
         public static PathEntry<string, string> defaultPath = new PathEntry<string, string>("Default", FileHelper.CustomPath);
 
+        private static ConfigSchema configData = new ConfigSchema();
+
         public static PathEntry<string, string> currentCustomPath;
 
         internal static CustomTextComponent refCurrentFolder;
         internal static CustomTextComponent refFileCounter;
+
+        internal static bool hasDoneFirstLoad = false;
 
         private Texture2D LoadImage(string name)
         {
@@ -57,12 +61,13 @@ namespace SRXDFolderSwitcher
 
             if (File.Exists(configFilePath))
             {
+
                 Logger.LogWarning($"-- Configuration file found. Reading. --");
 
-                customPaths = JsonConvert.DeserializeObject<List<PathEntry<string, string>>>(File.ReadAllText(configFilePath));
+                configData = JsonConvert.DeserializeObject<ConfigSchema>(File.ReadAllText(configFilePath));
 
                 Logger.LogWarning($"Discovered paths: ");
-                foreach (PathEntry<string, string> path in customPaths)
+                foreach (PathEntry<string, string> path in configData.Paths)
                 {
                     if (!Directory.Exists(path.Value))
                     {
@@ -74,19 +79,45 @@ namespace SRXDFolderSwitcher
                     }
                 }
 
+                customPaths = configData.Paths;
+
                 if (!customPaths.Contains(defaultPath)) customPaths.Insert(0, defaultPath);
+
+                if (!customPaths.Any(p => p.Key == configData.DefaultPreloadPath))
+                {
+                    currentCustomPath = customPaths.FirstOrDefault();
+                }
+                else
+                {
+                    currentCustomPath = configData.Paths.Where(p => p.Key == configData.DefaultPreloadPath).FirstOrDefault();
+                }
+
+                Logger.LogWarning($"Preloaded path: {configData.DefaultPreloadPath}");
+
             }
             else
             {
+
                 Logger.LogWarning($"-- Configuration file not found. Creating... --");
 
-                customPaths.Add(defaultPath);
-                File.WriteAllText(configFilePath, JsonConvert.SerializeObject(customPaths, Formatting.Indented));
+                customPaths.Insert(0, defaultPath);
 
-                Logger.LogWarning($"-- File created at: {configFilePath} --");
+                ConfigSchema schema = new ConfigSchema()
+                {
+
+                    Paths = customPaths,
+                    DefaultPreloadPath = "Default",
+
+                };
+
+                File.WriteAllText(configFilePath, JsonConvert.SerializeObject(schema, Formatting.Indented));
+
+                currentCustomPath = schema.Paths.FirstOrDefault();
+
+                Logger.LogWarning($"-- Configuration file created at /BepinEx/config/FolderSwitcherConfig.json --");
+                Logger.LogWarning($"-- Consider editing the configuration to set your default preloaded path --");
+
             }
-
-            currentCustomPath = customPaths.FirstOrDefault();
 
             // create mod UI
 
