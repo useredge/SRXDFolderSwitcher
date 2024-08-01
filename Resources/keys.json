@@ -1,4 +1,4 @@
-{
+﻿{
   "FSP_TabName": {
     "en": "Folder Switcher",
     "it": "Folder Switcher"
@@ -22,6 +22,11 @@
   "FSP_Actions": {
     "en": "Actions",
     "it": "Azioni"
+  },
+
+  "FSP_Utility": {
+    "en": "Utility",
+    "it": "Utilità"
   },
 
   "FSP_MoveSelected": {
@@ -52,6 +57,11 @@
   "FSP_Header_SwitchFolder": {
     "en": "Choose folder",
     "it": "Scegli cartella"
+  },
+
+  "FSP_RefreshFolder": {
+    "en": "Refresh folder",
+    "it": "Aggiorna cartella"
   },
 
   "FSP_Header_MoveToFolder": {

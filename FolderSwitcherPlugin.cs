@@ -269,6 +269,19 @@ namespace SRXDFolderSwitcher
                     }
                 );
 
+                UIHelper.CreateSectionHeader(parent, "UtilityHeader", "FSP_Utility", false);
+
+                UIHelper.CreateButton
+                (
+                    parent,
+                    "RefreshFolderButton",
+                    "FSP_RefreshFolder",
+                    () =>
+                    {
+                        SelectionPatches.CallTrackListRefresh();
+
+                    }
+                );
             };
 
         }
