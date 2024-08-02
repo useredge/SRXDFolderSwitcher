@@ -86,13 +86,13 @@ namespace SRXDFolderSwitcher
                 if (!customPaths.Any(p => p.Key == configData.DefaultPreloadPath))
                 {
                     currentCustomPath = customPaths.FirstOrDefault();
+                    Logger.LogWarning($"-- Preload path '{configData.DefaultPreloadPath}' was not found. Set to {currentCustomPath.Key} instead. --");
                 }
                 else
                 {
                     currentCustomPath = configData.Paths.Where(p => p.Key == configData.DefaultPreloadPath).FirstOrDefault();
+                    Logger.LogWarning($"Preloaded path: {configData.DefaultPreloadPath}");
                 }
-
-                Logger.LogWarning($"Preloaded path: {configData.DefaultPreloadPath}");
 
             }
             else

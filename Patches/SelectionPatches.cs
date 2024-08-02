@@ -16,7 +16,7 @@ namespace SRXDFolderSwitcher.Patches
     public class SelectionPatches
     {
 
-        public static List<FileCollection> fileCollectionList = new List<FileCollection>();
+        internal static List<FileCollection> fileCollectionList = new List<FileCollection>();
 
         public static void TryMoveFileCollectionToDestination(FileCollection fileCollection, string destinationPath, ref int successfulTransfers)
         {
