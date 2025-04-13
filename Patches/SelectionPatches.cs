@@ -194,14 +194,14 @@ namespace SRXDFolderSwitcher.Patches
         [HarmonyPatch(typeof(XDSelectionListMenu), "Update"), HarmonyPostfix]
         private static void CtrlPlusC_Postfix()
         {
-
-            if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) && Input.GetKeyDown(KeyCode.C))
+            
+            if ((KeyboardKey.GetKey(KeyCode.LeftControl)  || KeyboardKey.GetKey(KeyCode.RightControl)) && KeyboardKey.GetKeyDown(KeyCode.C))
             {
                 GetCurrentTrackData();
                 NotificationSystemGUI.AddMessage($"Added chart to clipboard.");
                 UpdateClipboardCount();
             }
-
+    
         }
 
     }
